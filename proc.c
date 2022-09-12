@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "rand.h"
 
 struct {
   struct spinlock lock;
@@ -75,6 +76,7 @@ allocproc(void)
 {
   struct proc *p;
   char *sp;
+  static int count = 0;
 
   acquire(&ptable.lock);
 
@@ -88,6 +90,8 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+
+  p->tickets = count++ + (nextpid * 10) / 5;
 
   release(&ptable.lock);
 
@@ -319,22 +323,47 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
-void
-scheduler(void)
+void scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
-  for(;;){
+
+  for (;;)
+  {
     // Enable interrupts on this processor.
     sti();
 
+    int tickets_passed = 0;
+    int totalTickets = 0;
+
+    //cuenta el total de tickets
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+      if (p->state != RUNNABLE)
+        continue;
+      totalTickets = totalTickets + p->tickets;
+    }
+
+    long winner = random_tickets(totalTickets);
+
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+      if (p->state != RUNNABLE)
         continue;
+      tickets_passed += p->tickets;
+      if (tickets_passed < winner)
+      {
+        continue;
+      }
+      // if (tickets_passed == winner) //Estas 3 lineas eran para verificar que funcionaba el Lottery Scheduler
+      // {
+      //   cprintf("\t\tTickets Passed: %d\n", tickets_passed);
+      //   cprintf("\t\tProcess Winner: %s\n", p->name);
+      //   cprintf("\t\tProcess Tickets: %d\n", p->tickets);
+      // }
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -349,9 +378,9 @@ scheduler(void)
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
+      break;
     }
     release(&ptable.lock);
-
   }
 }
 
@@ -532,3 +561,17 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+int contar_procesos(void)
+{ int count = 0;
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != UNUSED && p->state != EMBRYO && p->pid!=0){        
+      count++;
+      cprintf(" process pid: %d process tickets: %d \n", p->pid, p->tickets);}   
+        }
+  release(&ptable.lock);
+ return count;
+}
+
