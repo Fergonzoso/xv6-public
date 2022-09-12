@@ -358,12 +358,12 @@ void scheduler(void)
       {
         continue;
       }
-      // if (tickets_passed == winner) //Estas 3 lineas eran para verificar que funcionaba el Lottery Scheduler
-      // {
-      //   cprintf("\t\tTickets Passed: %d\n", tickets_passed);
-      //   cprintf("\t\tProcess Winner: %s\n", p->name);
-      //   cprintf("\t\tProcess Tickets: %d\n", p->tickets);
-      // }
+       if (tickets_passed == winner) //Estas 3 lineas eran para verificar que funcionaba el Lottery Scheduler
+       {
+        cprintf("\t\tTickets Passed: %d\n", tickets_passed);
+        cprintf("\t\tProcess Winner: %s\n", p->name);
+        cprintf("\t\tProcess Tickets: %d\n", p->tickets);
+      }
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
